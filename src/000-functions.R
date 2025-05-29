@@ -1060,21 +1060,13 @@ my_DataPrepare <- function(Dat, PeriodEnd = NULL, Period = NULL)
 # Helper functions for visualizations -------------------------------------
 
 # Function to process and filter recent datasets
-process_and_filter_recent <- function(data) {
+process_and_filter_recent <- function(data, dhs_cc) {
   # Extract country code and survey year
   data$country_code <- substr(data$SurveyId, 1, 2)
   data$survey_year <- as.numeric(substr(data$SurveyId, 3, 6)) # Convert to numeric
-  data$country_name <- countrycode(data$country_code, origin = "iso2c", destination = "country.name")
-  
-  # Modify country_name for specific country codes
-  data <- data %>%
-    mutate(country_name = case_when(
-      country_code == "BU" ~ "Burundi", 
-      country_code == "DR" ~ "Dominican Republic",
-      country_code == "NM" ~ "Namibia", 
-      TRUE ~ country_name
-    ))
-  
+  data <- merge(data, dhs_cc, by = "country_code", all = TRUE)
+  data$country_name <- countrycode(data$iso3, origin = "iso3c", destination = "country.name")
+
   # Create the 'country_year' column
   data$country_year <- paste(data$country_name, " ", data$survey_year, sep = "")
   

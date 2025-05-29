@@ -23,10 +23,7 @@ for(i in c(from.cran)){
 here::i_am("src/100-main.R")
 
 ## create output folder
-if(!dir.exists(here::here("out"))){dir.create(here::here("out"))}
-
-## create folder for temporary files
-if(!dir.exists(here::here("tmp"))){dir.create(here::here("tmp"))}  
+if(!dir.exists(here::here("gen"))){dir.create(here::here("gen"))}
 
 ## run scripts
 source(here::here("scripts", "000-functions.R")) 
