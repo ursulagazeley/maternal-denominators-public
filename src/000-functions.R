@@ -61,7 +61,6 @@ gen_pregout_gr <- function(x, tips){
 gen_pregout_cal <- function(x, tips){
   
   # tips should be c(0,4) for 5 years prior to survey
-  # tips should be c(0,6) for 7 years prior to survey
   # v008 Date of interview (CMC)
   # v011 Date of birth of respondent (CMC)
   # v017 Century month code (CMC) for the first month of the calendar. 
@@ -75,12 +74,15 @@ gen_pregout_cal <- function(x, tips){
   x$indid <- 1:nrow(x)
   
   x <- x[,c("indid","wt","region_name","v008","v011","v012","v013","v017","v018", "v019", "myvcal1")]
-
-  # If we want the rate from the interview and looking back 5 years, periodstart will be 0
-  x$pbeg <- x$v018 + periodstart # Earlier position in the string
-  x$pend <- x$v018 + periodstart + periodduration # Later position in the string
-  # Calendar
-  # https://www.dhsprogram.com/data/calendar-tutorial/
+  
+  x$pbeg <- x$v018 + periodstart # Earlier position in the myvcal1 string
+  x$pend <- x$v018 + periodstart + periodduration # Later position in the myvcal1 string
+  
+  # Check length of myvcal1
+  x$myvcal1len <- data.frame(names=x$myvcal1,chr=apply(x,2,nchar))$chr.myvcal1
+  # Proportion of observations dropped if pbeg is used as period start
+  prop_shortstr <- nrow(subset(x, x$myvcal1len < pbeg))/nrow(x)
+  thresh <- 0
   
   # Length of calendar
   x$callen <- x$v019
@@ -102,13 +104,15 @@ gen_pregout_cal <- function(x, tips){
   # One row per live birth
   df_lb_bylb <- plyr::ldply(l_lb, .id = "indid")
   df_lb_bylb <- merge(df_lb, df_lb_bylb, by = "indid")
-  # Limit to those in period of interest
-  df_lb_bylb <- subset(df_lb_bylb, start >= pbeg & start <= pend)
+  # If myvcal1 is full length (as it is in most recent surveys), use pbeg/pend period
+  if(prop_shortstr <= thresh){
+    # Limit to those in period of interest
+    df_lb_bylb <- subset(df_lb_bylb, start >= pbeg & start <= pend)
+  }
   # For stillbirths, need to have 6 months of data prior to termination for it to count
   # Do not count any live births in the first 6 months
   df_lb_bylb$censor <- df_lb_bylb$v019 - 6
   df_lb_bylb <- subset(df_lb_bylb, start < censor)
-  # Date of preg outcome (CMC)
   # Date of interview minus (month number of preg outcome - month number of interview)
   df_lb_bylb$po_date <- df_lb_bylb$v008 - (df_lb_bylb$start - df_lb_bylb$v018) 
   # Age at pregnancy outcome
@@ -126,8 +130,11 @@ gen_pregout_cal <- function(x, tips){
   # One row per stillbirth
   df_stb_bystb <- plyr::ldply(l_stb, .id = "indid")
   df_stb_bystb <- merge(df_stb, df_stb_bystb, by = "indid")
-  # Limit to those in period of interest
-  df_stb_bystb <- subset(df_stb_bystb, start >= pbeg & start <= pend)
+  # If myvcal1 is full length (as it is in most recent surveys), use pbeg/pend period
+  if(prop_shortstr <= thresh){
+    # Limit to those in period of interest
+    df_stb_bystb <- subset(df_stb_bystb, start >= pbeg & start <= pend)
+  }
   # Date of preg outcome (CMC)
   # Date of interview minus (month number of preg outcome - month number of interview)
   df_stb_bystb$po_date <- df_stb_bystb$v008 - (df_stb_bystb$start - df_stb_bystb$v018) 
@@ -135,8 +142,8 @@ gen_pregout_cal <- function(x, tips){
   df_stb_bystb$age <- (df_stb_bystb$po_date - df_stb_bystb$v011)/12
   # Age group
   df_stb_bystb$agegrp <- cut(df_stb_bystb$age, 
-                           breaks=c(-Inf,15, 20, 25, 30, 35, 40, 45, 50, Inf), 
-                           labels=c("<15","15-19","20-24","25-29","30-34","35-39","40-44","45-49",">50"))
+                             breaks=c(-Inf,15, 20, 25, 30, 35, 40, 45, 50, Inf), 
+                             labels=c("<15","15-19","20-24","25-29","30-34","35-39","40-44","45-49",">50"))
   
   
   # Only keep individuals who have had a termination
@@ -148,10 +155,6 @@ gen_pregout_cal <- function(x, tips){
   df_trm_bytrm <- plyr::ldply(l_trm, .id = "indid")
   df_trm_bytrm <- merge(df_trm, df_trm_bytrm, by = "indid")
   # Exclude terminations that are stillbirths
-  # df_trm_bytrm$tplus6pos <- df_trm_bytrm$start + 6
-  # df_trm_bytrm$vcalnchar <- nchar(df_trm_bytrm$myvcal1)
-  # df_trm_bytrm$tplus6 <- ifelse(df_trm_bytrm$tplus6 > df_trm_bytrm$vcalnchar, 
-  #                               df_trm_bytrm$vcalnchar,df_trm_bytrm$tplus6)
   df_trm_bytrm$tstring <- substr(df_trm_bytrm$myvcal1, df_trm_bytrm$start, df_trm_bytrm$start + 6)
   df_trm_bytrm$stb <- ifelse(df_trm_bytrm$tstring == "TPPPPPP", 1, 0)
   df_trm_bytrm <- subset(df_trm_bytrm, stb == 0)
@@ -163,8 +166,11 @@ gen_pregout_cal <- function(x, tips){
   df_trm_bytrm$checkp <- lapply(df_trm_bytrm$ntstring, function(x) paste0(rep("P", x-1),  collapse = ""))
   df_trm_bytrm <- subset(df_trm_bytrm, !(ntstring == 1))
   df_trm_bytrm <- subset(df_trm_bytrm, !(followingt == checkp))
-  # Limit to those in period of interest
-  df_trm_bytrm <- subset(df_trm_bytrm, start >= pbeg & start <= pend)
+  # If myvcal1 is full length (as it is in most recent surveys), use pbeg/pend period
+  if(prop_shortstr <= thresh){
+    # Limit to those in period of interest
+    df_trm_bytrm <- subset(df_trm_bytrm, start >= pbeg & start <= pend)
+  }
   # Date of preg outcome (CMC)
   # Date of interview minus (month number of preg outcome - month number of interview)
   df_trm_bytrm$po_date <- df_trm_bytrm$v008 - (df_trm_bytrm$start - df_trm_bytrm$v018) 
@@ -172,8 +178,8 @@ gen_pregout_cal <- function(x, tips){
   df_trm_bytrm$age <- (df_trm_bytrm$po_date - df_trm_bytrm$v011)/12
   # Age group
   df_trm_bytrm$agegrp <- cut(df_trm_bytrm$age, 
-                           breaks=c(-Inf,15, 20, 25, 30, 35, 40, 45, 50, Inf), 
-                           labels=c("<15","15-19","20-24","25-29","30-34","35-39","40-44","45-49",">50"))
+                             breaks=c(-Inf,15, 20, 25, 30, 35, 40, 45, 50, Inf), 
+                             labels=c("<15","15-19","20-24","25-29","30-34","35-39","40-44","45-49",">50"))
   
   df1 <- df_lb_bylb %>%
     select(wt, agegrp, region_name) %>%
