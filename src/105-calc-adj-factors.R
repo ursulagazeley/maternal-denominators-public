@@ -16,7 +16,7 @@ pregout_fph <- read.csv("./gen/pregout-fph-byage.csv")
 
 repcalWide <- pregout_repcal %>%
   select(SurveyId, agegrp, var, perwt, n) %>%
-  filter(agegrp != "<15") %>%
+  filter(!(agegrp %in% c("<15", ">50"))) %>%
   pivot_wider(
     id_cols = c(SurveyId, agegrp),
     names_from = var,
@@ -28,7 +28,7 @@ repcalWide <- pregout_repcal %>%
 fphWide <- pregout_fph %>%
   mutate(var = paste0(var, "_fph", sep = "")) %>%
   select(SurveyId, agegrp, var, perwt, n) %>%
-  filter(agegrp != "<15") %>%
+  filter(!(agegrp %in% c("<15", ">50"))) %>%
   pivot_wider(
     id_cols = c(SurveyId, agegrp),
     names_from = var,
