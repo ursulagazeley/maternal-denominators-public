@@ -747,10 +747,3 @@ figS5 <- ggplot(prmr_jittered, aes(x = PRMR, y = country_year)) +
 figS5
 
 ggsave(here("gen", "FigureS5-PRMR-Uncert.png"), figS5, width = 14, height = 10, bg = "white" )
-
-
-
-
-
-
-

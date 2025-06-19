@@ -121,4 +121,3 @@ df_AdjInfoPRMR <- df_AdjInfoPRMR[order(df_AdjInfoPRMR$SurveyId),]
 l_res <- list(df_MMR, df_AdjInfoMMR, df_PRMR, df_AdjInfoPRMR)
 names(l_res) <- c("MMR", "AdjInfoMMR", "PRMR", "AdjInfoPRMR")
 saveRDS(l_res, "./gen/mort-rates-uncertainty.rds")
-
